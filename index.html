@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolution API Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366;
+      --green-dark: #1ead52;
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --danger: #f85149;
+      --warning: #d29922;
+      --sidebar-w: 230px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      padding: 18px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .logo-text { font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .logo-text small { display: block; color: var(--text-muted); font-size: 11px; font-weight: 400; }
+
+    .nav { padding: 10px 8px; flex: 1; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(37,211,102,0.12); color: var(--green); }
+    .nav-icon { width: 18px; text-align: center; font-style: normal; }
+
+    .sidebar-footer {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .sidebar-footer .label { color: var(--text-muted); margin-bottom: 2px; }
+    .sidebar-footer .value { color: var(--text); word-break: break-all; }
+
+    /* ── Main ── */
+    .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
+
+    .topbar {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar h1 { font-size: 15px; font-weight: 600; }
+
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .dot.ok { background: var(--green); }
+    .dot.err { background: var(--danger); }
+
+    .content { padding: 24px; flex: 1; }
+
+    /* ── Section ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+
+    .stat-value { font-size: 30px; font-weight: 700; color: var(--green); }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title { font-size: 14px; font-weight: 600; }
+
+    /* ── Instance Grid ── */
+    .instance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
+    }
+
+    .instance-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .instance-card.is-open { border-color: rgba(37,211,102,0.35); }
+    .instance-card.is-connecting { border-color: rgba(210,153,34,0.35); }
+
+    .inst-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .inst-name { font-size: 14px; font-weight: 600; }
+    .inst-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+    .inst-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .badge-green { background: rgba(37,211,102,0.12); color: var(--green); }
+    .badge-yellow { background: rgba(210,153,34,0.12); color: var(--warning); }
+    .badge-red { background: rgba(248,81,73,0.12); color: var(--danger); }
+    .badge-gray { background: rgba(139,148,158,0.12); color: var(--text-muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: opacity 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--green); color: #000; }
+    .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+    .btn-danger { background: rgba(248,81,73,0.1); color: var(--danger); border: 1px solid rgba(248,81,73,0.25); }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.2); }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* ── Forms ── */
+    .form-row { display: grid; gap: 14px; margin-bottom: 14px; }
+    .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+    .form-row.cols-3 { grid-template-columns: 1fr 1fr auto; align-items: end; }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+    label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+    input, select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 11px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: var(--green); }
+    textarea { resize: vertical; min-height: 90px; }
+
+    select option { background: var(--surface2); }
+
+    /* ── Empty State ── */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-text { font-size: 13px; }
+
+    /* ── Dashboard list ── */
+    .dash-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .dash-row:last-child { border-bottom: none; }
+    .dash-name { font-size: 13px; font-weight: 600; }
+    .dash-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Key display ── */
+    .key-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 11px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .key-box span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+
+    /* ── QR ── */
+    .qr-wrap { text-align: center; padding: 8px 0 16px; }
+    .qr-wrap img { width: 210px; height: 210px; border-radius: 8px; padding: 8px; background: #fff; }
+    .qr-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+
+    /* ── Toast ── */
+    .toasts {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      min-width: 240px;
+      max-width: 340px;
+      pointer-events: all;
+      animation: toastin 0.2s ease;
+    }
+
+    .toast.ok { border-left: 3px solid var(--green); }
+    .toast.err { border-left: 3px solid var(--danger); }
+    .toast.warn { border-left: 3px solid var(--warning); }
+
+    @keyframes toastin { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Spinner ── */
+    .spin {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spinning 0.65s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spinning { to { transform: rotate(360deg); } }
+
+    .loading-center { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 32px; color: var(--text-muted); font-size: 13px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📱</div>
+    <div class="logo-text">
+      EvoAPI Manager
+      <small>WhatsApp Gateway</small>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-item active" data-section="dashboard" onclick="nav('dashboard')">
+      <i class="nav-icon">📊</i> Dashboard
+    </button>
+    <button class="nav-item" data-section="instances" onclick="nav('instances')">
+      <i class="nav-icon">📱</i> Instances
+    </button>
+    <button class="nav-item" data-section="messages" onclick="nav('messages')">
+      <i class="nav-icon">💬</i> Send Message
+    </button>
+    <button class="nav-item" data-section="apikeys" onclick="nav('apikeys')">
+      <i class="nav-icon">🔑</i> API Keys
+    </button>
+    <button class="nav-item" data-section="settings" onclick="nav('settings')">
+      <i class="nav-icon">⚙️</i> Settings
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="label">Connected to</div>
+    <div class="value" id="sb-url">—</div>
+  </div>
+</aside>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="page-title">Dashboard</h1>
+    <div class="api-status">
+      <div class="dot" id="api-dot"></div>
+      <span id="api-label">Not configured</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── Dashboard ── -->
+    <div class="section active" id="section-dashboard">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="s-total">—</div>
+          <div class="stat-label">Total Instances</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="s-connected">—</div>
+          <div class="stat-label">Connected</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="s-disconnected">—</div>
+          <div class="stat-label">Disconnected</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Instances Overview</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+        <div id="dash-list">
+          <div class="loading-center"><div class="spin"></div> Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Instances ── -->
+    <div class="section" id="section-instances">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px;">Create New Instance</div>
+        <div class="form-row cols-3">
+          <div class="form-group">
+            <label>Instance Name *</label>
+            <input id="new-name" type="text" placeholder="e.g. my-whatsapp">
+          </div>
+          <div class="form-group">
+            <label>Token (optional)</label>
+            <input id="new-token" type="text" placeholder="Leave blank to auto-generate">
+          </div>
+          <button class="btn btn-primary" onclick="createInstance()">＋ Create</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All Instances</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadInstances()">↻ Refresh</button>
+        </div>
+        <div id="inst-grid" class="instance-grid">
+          <div class="loading-center"><div class="spin"></div> Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Messages ── -->
+    <div class="section" id="section-messages">
+      <div class="card" style="max-width:540px;">
+        <div class="card-title" style="margin-bottom:16px;">Send Text Message</div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Instance (connected only)</label>
+          <select id="msg-inst">
+            <option value="">Select an instance…</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Recipient Phone (with country code, no +)</label>
+          <input id="msg-to" type="text" placeholder="628123456789">
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Message</label>
+          <textarea id="msg-body" placeholder="Type your message…"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="sendMsg()">▶ Send Message</button>
+      </div>
+    </div>
+
+    <!-- ── API Keys ── -->
+    <div class="section" id="section-apikeys">
+      <div class="card" style="max-width:600px;">
+        <div class="card-header">
+          <span class="card-title">Instance API Keys (Tokens)</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadApiKeys()">↻ Refresh</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          These tokens are used as per-instance API keys for webhook calls and instance-level authentication.
+        </p>
+        <div id="keys-list">
+          <div class="loading-center"><div class="spin"></div> Loading...</div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:600px;">
+        <div class="card-title" style="margin-bottom:12px;">Global API Key</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+          The global key is sent in the <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px;">apikey</code> header for all requests.
+        </p>
+        <div class="key-box">
+          <span id="global-key-display">Not configured</span>
+          <button class="btn btn-secondary btn-sm" onclick="copyGlobalKey()">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Settings ── -->
+    <div class="section" id="section-settings">
+      <div class="card" style="max-width:520px;">
+        <div class="card-title" style="margin-bottom:16px;">API Configuration</div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Evolution API Base URL</label>
+          <input id="cfg-url" type="url" placeholder="https://whatsapp.webcreatia.site">
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label>Global API Key</label>
+          <input id="cfg-key" type="password" placeholder="Your AUTHENTICATION_API_KEY value">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          <button class="btn btn-secondary" onclick="testConn()">Test Connection</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ════ QR MODAL ════ -->
+<div class="modal-backdrop" id="qr-modal" onclick="closeQR(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="qr-title">Connect Instance</div>
+
+    <div id="qr-loading" class="loading-center">
+      <div class="spin"></div> Fetching QR code…
+    </div>
+
+    <div id="qr-content" style="display:none;">
+      <div class="qr-wrap">
+        <img id="qr-img" src="" alt="QR Code">
+        <p class="qr-hint">Open WhatsApp → Linked Devices → Link a Device</p>
+        <button class="btn btn-secondary btn-sm" onclick="doFetchQR()" style="margin-top:10px;">↻ Refresh QR</button>
+      </div>
+    </div>
+
+    <div id="qr-already" style="display:none; text-align:center; padding:20px 0;">
+      <div style="font-size:38px; margin-bottom:10px;">✅</div>
+      <div style="font-weight:600; font-size:14px;">Already Connected!</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">This instance is already paired to WhatsApp.</div>
+    </div>
+
+    <div id="qr-error" style="display:none; text-align:center; padding:20px 0; color:var(--danger); font-size:13px;"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+const S = {
+  apiUrl: '',
+  apiKey: '',
+  instances: [],
+  qrInstance: null,
+};
+
+const PAGE_TITLES = {
+  dashboard: 'Dashboard',
+  instances: 'Instances',
+  messages: 'Send Message',
+  apikeys: 'API Keys',
+  settings: 'Settings',
+};
+
+// ─────────────────────────────────────────────
+//  Init
+// ─────────────────────────────────────────────
+function init() {
+  S.apiUrl = (localStorage.getItem('evo_url') || '').replace(/\/$/, '');
+  S.apiKey = localStorage.getItem('evo_key') || '';
+
+  if (S.apiUrl) {
+    document.getElementById('cfg-url').value = S.apiUrl;
+    document.getElementById('sb-url').textContent = S.apiUrl.replace(/^https?:\/\//, '');
+  }
+  if (S.apiKey) {
+    document.getElementById('cfg-key').value = S.apiKey;
+    document.getElementById('global-key-display').textContent = maskKey(S.apiKey);
+  }
+
+  if (S.apiUrl && S.apiKey) {
+    loadDashboard();
+  } else {
+    nav('settings');
+    toast('Configure your API URL and key to get started', 'warn');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Navigation
+// ─────────────────────────────────────────────
+function nav(section) {
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+  document.getElementById('section-' + section).classList.add('active');
+  document.querySelector(`[data-section="${section}"]`).classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[section];
+
+  if (section === 'dashboard') loadDashboard();
+  if (section === 'instances') loadInstances();
+  if (section === 'messages') populateMsgSelect();
+  if (section === 'apikeys') loadApiKeys();
+}
+
+// ─────────────────────────────────────────────
+//  API helper
+// ─────────────────────────────────────────────
+async function api(method, path, body) {
+  if (!S.apiUrl) throw new Error('API URL not configured');
+  const res = await fetch(S.apiUrl + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': S.apiKey,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+// ─────────────────────────────────────────────
+//  Settings
+// ─────────────────────────────────────────────
+function saveSettings() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfg-key').value.trim();
+
+  if (!url) return toast('API URL is required', 'err');
+  if (!key) return toast('API key is required', 'err');
+
+  S.apiUrl = url;
+  S.apiKey = key;
+  localStorage.setItem('evo_url', url);
+  localStorage.setItem('evo_key', key);
+
+  document.getElementById('sb-url').textContent = url.replace(/^https?:\/\//, '');
+  document.getElementById('global-key-display').textContent = maskKey(key);
+
+  toast('Settings saved!', 'ok');
+  nav('dashboard');
+}
+
+async function testConn() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfg-key').value.trim();
+  try {
+    const res = await fetch(url + '/instance/fetchInstances', {
+      headers: { 'apikey': key }
+    });
+    if (res.ok) { toast('Connection successful ✓', 'ok'); setStatus(true); }
+    else toast(`Connection failed: HTTP ${res.status}`, 'err');
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─────────────────────────────────────────────
+//  Dashboard
+// ─────────────────────────────────────────────
+async function loadDashboard() {
+  if (!S.apiKey) return;
+  document.getElementById('dash-list').innerHTML =
+    '<div class="loading-center"><div class="spin"></div> Loading…</div>';
+
+  try {
+    const data = await api('GET', '/instance/fetchInstances');
+    S.instances = Array.isArray(data) ? data : [];
+    setStatus(true);
+
+    const total = S.instances.length;
+    const connected = S.instances.filter(i => getConnState(i) === 'open').length;
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-connected').textContent = connected;
+    document.getElementById('s-disconnected').textContent = total - connected;
+
+    if (total === 0) {
+      document.getElementById('dash-list').innerHTML =
+        `<div class="empty"><div class="empty-icon">📱</div>
+         <div class="empty-text">No instances yet. <a href="#" onclick="nav('instances');return false;" style="color:var(--green)">Create one →</a></div></div>`;
+      return;
+    }
+
+    document.getElementById('dash-list').innerHTML = S.instances.map(inst => {
+      const name = instName(inst);
+      const sub = instOwner(inst) || 'Not connected';
+      const st = getConnState(inst);
+      return `<div class="dash-row">
+        <div>
+          <div class="dash-name">${esc(name)}</div>
+          <div class="dash-sub">${esc(sub)}</div>
+        </div>
+        ${statusBadge(st)}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    setStatus(false);
+    document.getElementById('dash-list').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Instances
+// ─────────────────────────────────────────────
+async function loadInstances() {
+  if (!S.apiKey) return;
+  document.getElementById('inst-grid').innerHTML =
+    '<div class="loading-center"><div class="spin"></div> Loading…</div>';
+
+  try {
+    const data = await api('GET', '/instance/fetchInstances');
+    S.instances = Array.isArray(data) ? data : [];
+    setStatus(true);
+    renderInstGrid();
+  } catch (e) {
+    setStatus(false);
+    document.getElementById('inst-grid').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  }
+}
+
+function renderInstGrid() {
+  if (S.instances.length === 0) {
+    document.getElementById('inst-grid').innerHTML =
+      '<div class="empty"><div class="empty-icon">📱</div><div class="empty-text">No instances found. Create one above.</div></div>';
+    return;
+  }
+
+  document.getElementById('inst-grid').innerHTML = S.instances.map(inst => {
+    const name = instName(inst);
+    const sub = instOwner(inst) || 'Not connected';
+    const st = getConnState(inst);
+    const isOpen = st === 'open';
+    const cssClass = isOpen ? 'is-open' : (st === 'connecting' ? 'is-connecting' : '');
+
+    return `<div class="instance-card ${cssClass}">
+      <div class="inst-header">
+        <div class="inst-name">${esc(name)}</div>
+        ${statusBadge(st)}
+      </div>
+      <div class="inst-sub">${esc(sub)}</div>
+      <div class="inst-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openQR('${esc(name)}')">📷 QR / Connect</button>
+        ${isOpen
+          ? `<button class="btn btn-secondary btn-sm" onclick="doLogout('${esc(name)}')">⏏ Logout</button>`
+          : ''}
+        <button class="btn btn-danger btn-sm" onclick="doDelete('${esc(name)}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function createInstance() {
+  const name = document.getElementById('new-name').value.trim();
+  const token = document.getElementById('new-token').value.trim();
+  if (!name) return toast('Instance name is required', 'err');
+
+  const body = { instanceName: name, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
+  if (token) body.token = token;
+
+  try {
+    await api('POST', '/instance/create', body);
+    toast(`Instance "${name}" created!`, 'ok');
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-token').value = '';
+    await loadInstances();
+    // auto-open QR
+    setTimeout(() => openQR(name), 600);
+  } catch (e) {
+    toast('Create failed: ' + e.message, 'err');
+  }
+}
+
+async function doDelete(name) {
+  if (!confirm(`Delete instance "${name}"? This cannot be undone.`)) return;
+  try {
+    await api('DELETE', `/instance/delete/${encodeURIComponent(name)}`);
+    toast(`"${name}" deleted`, 'ok');
+    loadInstances();
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'err');
+  }
+}
+
+async function doLogout(name) {
+  if (!confirm(`Logout "${name}" from WhatsApp?`)) return;
+  try {
+    await api('DELETE', `/instance/logout/${encodeURIComponent(name)}`);
+    toast(`"${name}" logged out`, 'ok');
+    loadInstances();
+  } catch (e) {
+    toast('Logout failed: ' + e.message, 'err');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  QR Code
+// ─────────────────────────────────────────────
+function openQR(name) {
+  S.qrInstance = name;
+  document.getElementById('qr-title').textContent = 'Connect: ' + name;
+  document.getElementById('qr-loading').style.display = 'flex';
+  document.getElementById('qr-content').style.display = 'none';
+  document.getElementById('qr-already').style.display = 'none';
+  document.getElementById('qr-error').style.display = 'none';
+  document.getElementById('qr-modal').classList.add('open');
+  doFetchQR();
+}
+
+async function doFetchQR() {
+  if (!S.qrInstance) return;
+
+  document.getElementById('qr-loading').style.display = 'flex';
+  document.getElementById('qr-content').style.display = 'none';
+  document.getElementById('qr-already').style.display = 'none';
+  document.getElementById('qr-error').style.display = 'none';
+
+  try {
+    // Check current state first
+    const stData = await api('GET', `/instance/connectionState/${encodeURIComponent(S.qrInstance)}`);
+    const connState = stData?.instance?.state || stData?.state;
+
+    if (connState === 'open') {
+      document.getElementById('qr-loading').style.display = 'none';
+      document.getElementById('qr-already').style.display = 'block';
+      return;
+    }
+
+    // Fetch QR
+    const qrData = await api('GET', `/instance/connect/${encodeURIComponent(S.qrInstance)}`);
+    const b64 = qrData?.base64 || qrData?.qrcode?.base64 || qrData?.code;
+
+    if (b64) {
+      const src = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+      document.getElementById('qr-img').src = src;
+      document.getElementById('qr-loading').style.display = 'none';
+      document.getElementById('qr-content').style.display = 'block';
+    } else {
+      showQRError('No QR code returned. The instance may still be starting, try again.');
+    }
+  } catch (e) {
+    showQRError(e.message);
+  }
+}
+
+function showQRError(msg) {
+  document.getElementById('qr-loading').style.display = 'none';
+  const el = document.getElementById('qr-error');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+function closeModal() {
+  document.getElementById('qr-modal').classList.remove('open');
+  S.qrInstance = null;
+}
+
+function closeQR(e) {
+  if (e.target === document.getElementById('qr-modal')) closeModal();
+}
+
+// ─────────────────────────────────────────────
+//  Messages
+// ─────────────────────────────────────────────
+function populateMsgSelect() {
+  const sel = document.getElementById('msg-inst');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select an instance…</option>';
+
+  const connected = S.instances.filter(i => getConnState(i) === 'open');
+  connected.forEach(inst => {
+    const name = instName(inst);
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+
+  if (sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+
+  if (connected.length === 0 && S.instances.length === 0) {
+    // Fetch silently
+    api('GET', '/instance/fetchInstances').then(data => {
+      S.instances = Array.isArray(data) ? data : [];
+      populateMsgSelect();
+    }).catch(() => {});
+  }
+}
+
+async function sendMsg() {
+  const inst = document.getElementById('msg-inst').value;
+  const to = document.getElementById('msg-to').value.trim();
+  const body = document.getElementById('msg-body').value.trim();
+
+  if (!inst) return toast('Select an instance', 'err');
+  if (!to) return toast('Enter a phone number', 'err');
+  if (!body) return toast('Enter a message', 'err');
+
+  const btn = document.querySelector('#section-messages .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    await api('POST', `/message/sendText/${encodeURIComponent(inst)}`, {
+      number: to,
+      text: body,
+    });
+    toast('Message sent!', 'ok');
+    document.getElementById('msg-body').value = '';
+  } catch (e) {
+    toast('Send failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Send Message';
+  }
+}
+
+// ─────────────────────────────────────────────
+//  API Keys
+// ─────────────────────────────────────────────
+async function loadApiKeys() {
+  document.getElementById('keys-list').innerHTML =
+    '<div class="loading-center"><div class="spin"></div> Loading…</div>';
+
+  try {
+    const data = await api('GET', '/instance/fetchInstances');
+    S.instances = Array.isArray(data) ? data : [];
+
+    if (S.instances.length === 0) {
+      document.getElementById('keys-list').innerHTML =
+        '<div class="empty" style="padding:20px;"><div class="empty-text">No instances found.</div></div>';
+      return;
+    }
+
+    document.getElementById('keys-list').innerHTML = S.instances.map(inst => {
+      const name = instName(inst);
+      const token = inst.instance?.token || inst.token || inst.hash || inst.apikey || 'N/A';
+      return `<div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:5px;">${esc(name)}</div>
+        <div class="key-box">
+          <span>${esc(token)}</span>
+          <button class="btn btn-secondary btn-sm" onclick="copyText('${esc(token)}', this)">Copy</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('keys-list').innerHTML =
+      `<div class="empty" style="padding:20px;"><div class="empty-text">Error: ${esc(e.message)}</div></div>`;
+  }
+}
+
+function copyGlobalKey() {
+  copyText(S.apiKey);
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    toast('Copied to clipboard', 'ok');
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => btn.textContent = orig, 1500); }
+  }).catch(() => toast('Copy failed', 'err'));
+}
+
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+function instName(inst) {
+  return inst.instance?.instanceName || inst.instanceName || 'Unknown';
+}
+
+function instOwner(inst) {
+  return inst.instance?.profileName || inst.instance?.owner || inst.owner || '';
+}
+
+function getConnState(inst) {
+  return inst.instance?.connectionStatus
+    || inst.instance?.state
+    || inst.connectionStatus
+    || inst.state
+    || 'close';
+}
+
+function statusBadge(state) {
+  if (state === 'open') return '<span class="badge badge-green">● Connected</span>';
+  if (state === 'connecting') return '<span class="badge badge-yellow">● Connecting</span>';
+  return '<span class="badge badge-red">● Disconnected</span>';
+}
+
+function setStatus(ok) {
+  document.getElementById('api-dot').className = 'dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('api-label').textContent = ok ? 'API Connected' : 'API Error';
+}
+
+function maskKey(key) {
+  if (!key || key.length < 8) return key;
+  return key.slice(0, 4) + '••••••••' + key.slice(-4);
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ─────────────────────────────────────────────
+//  Boot
+// ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
