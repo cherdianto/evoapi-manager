@@ -9,6 +9,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy dashboard
 COPY index.html /usr/share/nginx/html/index.html
 
-EXPOSE 80
+EXPOSE 6002
 
 CMD ["nginx", "-g", "daemon off;"]
