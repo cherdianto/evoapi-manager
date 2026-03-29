@@ -645,11 +645,11 @@ function init() {
     document.getElementById('global-key-display').textContent = maskKey(S.apiKey);
   }
 
-  if (S.apiKey) {
+  if (S.apiUrl && S.apiKey) {
     loadDashboard();
   } else {
     nav('settings');
-    toast('Configure your API key to get started', 'warn');
+    toast('Configure your API URL and key to get started', 'warn');
   }
 }
 
@@ -674,8 +674,9 @@ function nav(section) {
 //  API helper
 // ─────────────────────────────────────────────
 async function api(method, path, body) {
+  if (!S.apiUrl) throw new Error('API URL not configured');
   if (!S.apiKey) throw new Error('API key not configured');
-  const res = await fetch('/api' + path, {
+  const res = await fetch(S.apiUrl + path, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -711,9 +712,10 @@ function saveSettings() {
 }
 
 async function testConn() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
   const key = document.getElementById('cfg-key').value.trim();
   try {
-    const res = await fetch('/api/instance/fetchInstances', {
+    const res = await fetch(url + '/instance/fetchInstances', {
       headers: { 'apikey': key }
     });
     if (res.ok) { toast('Connection successful ✓', 'ok'); setStatus(true); }
